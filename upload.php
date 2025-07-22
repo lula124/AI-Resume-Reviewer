@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require 'vendor/autoload.php';
 use Smalot\PdfParser\Parser as PdfParser;
 use PhpOffice\PhpWord\IOFactory as WordIOFactory;
@@ -78,35 +81,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $resumeText = $_POST['resumeText'];
     }
 
-    if (!$resumeText) die("Couldn't extract the resume text.");
+    if (!$resumeText) { echo "<div>Couldn't extract the resume text.</div>"; exit; }
+    if (!$jd && $tool !== 'mock' && $tool !== 'cover') { echo "<div>Job description is required.</div>"; exit; }
 
     if ($tool === 'analyze') {
-        $mainPrompt = "
-You are an expert resume/job application reviewer. Below is a user's resume, followed by a job description.
-- Estimate as a percentage (0-100%) the candidate's likelihood of being called for an interview.
-- List the top problems/gaps in the CV with respect to the job description.
-- Provide actionable suggestions to improve the CV to better match the job and increase interview chances.
-- Structure:
-Interview Chance: X%
-Main Problems: ...
-Suggestions: ...
---- Resume ---
-$resumeText
---- Job Description ---
-$jd";
-        $aiFeedback = callGeminiAPI($mainPrompt, $geminiApiKey);
-        echo "<h2>Resume and JD Analysis</h2>";
-        echo "<h3>Extracted Resume Text:</h3>
-        <pre style='background:#f6f6f6; padding:10px; border-radius:5px; white-space:pre-wrap; max-height:300px; overflow:auto;'>"
-        . htmlspecialchars($resumeText) . "</pre>";
-        echo "<h3>Job Description:</h3>
-        <pre style='background:#f6f6ff; padding:10px; border-radius:5px; white-space:pre-wrap;'>"
-        . htmlspecialchars($jd) . "</pre>";
-        echo "<h3>Gemini AI Feedback:</h3>
-        <div style='background:#eef2f7; padding:15px; border-radius:8px; font-family:Arial;'>"
-        . nl2br(htmlspecialchars($aiFeedback)) . "</div>";
+        // Extract owner's basic info
+        $promptSummary = "Extract the resume owner's full name, email, phone, and a brief summary from the following resume text. Output ONLY a JSON object:
+{ \"name\": \"\", \"email\": \"\", \"phone\": \"\", \"summary\": \"\" }
+Resume:
+$resumeText";
+        $ownerDetailsJson = callGeminiAPI($promptSummary, $geminiApiKey);
+        $ownerDetails = [];
+        if (preg_match('/\{.*\}/s', $ownerDetailsJson, $jsonOut)) {
+            $ownerDetails = json_decode($jsonOut[0], true);
+        }
 
-        // NEXT ACTION BUTTONS
+        // Extract qualifications required by job present and missing in resume
+        $qualPrompt = <<<EOD
+        You are an expert resume analyzer. Given the job description and resume, your task is to extract the qualifications required by the job and organize them into two lists:  
+        
+        - **"present_in_resume"**: qualifications, skills, or requirements from the job description that are found in the resume.  
+        - **"missing_in_resume"**: qualifications, skills, or requirements from the job description that are NOT found in the resume.  
+        
+        ⚠️ **Output ONLY a valid JSON object** with these two arrays.  
+        ⚠️ Do **NOT** include explanations, formatting, or any text outside the JSON object.  
+        
+        Job Description:  
+        $jd  
+        
+        Resume:  
+        $resumeText
+        EOD;
+        
+        $qualJson = callGeminiAPI($qualPrompt, $geminiApiKey);
+        $qualData = [];
+        if (preg_match('/\{.*\}/s', $qualJson, $qualOut)) {
+            $qualData = json_decode($qualOut[0], true);
+        }
+
+        // Get interview chance and suggestions
+        $suggestPrompt = <<<EOD
+        You are an expert recruiter and career coach. Analyze the following resume and job description with absolute precision. 
+        
+        ⚠️ Your response **must strictly follow this exact format**:  
+        
+        Interview Chance: <number>%  
+        Suggestions:  
+        - <bullet list of the most impactful and actionable suggestions to improve this resume for the job>  
+        
+        ✅ Do **NOT** include anything outside this format.  
+        ✅ Be direct, critical, and prioritize changes that will **maximize the candidate's chances**.  
+        
+        Resume:  
+        $resumeText  
+        
+        Job Description:  
+        $jd
+        EOD;
+        
+        $suggestResult = callGeminiAPI($suggestPrompt, $geminiApiKey);
+        preg_match('/Interview Chance:\s*(\d+)%/i', $suggestResult, $probMatch);
+        $probability = $probMatch ? intval($probMatch[1]) : null;
+        $suggestionOut = trim(str_replace($probMatch[0] ?? '', '', $suggestResult));
+
+        // Display results
+        echo "<h2>Resume Analysis</h2>";
+
+        // Display Owner Details
+        echo "<h3>Resume Owner Details</h3>";
+        echo "<ul>";
+        echo "<li><b>Name:</b> " . htmlspecialchars($ownerDetails['name'] ?? 'N/A') . "</li>";
+        echo "<li><b>Email:</b> " . htmlspecialchars($ownerDetails['email'] ?? 'N/A') . "</li>";
+        echo "<li><b>Phone:</b> " . htmlspecialchars($ownerDetails['phone'] ?? 'N/A') . "</li>";
+        echo "<li><b>Summary:</b> " . htmlspecialchars($ownerDetails['summary'] ?? 'N/A') . "</li>";
+        echo "</ul>";
+
+        // Show interview chance prominently
+        if ($probability !== null) {
+            echo "<h3>Interview Probability</h3>";
+            echo "<div style='padding: 10px; background-color: #ddd; font-weight: bold; font-size: 2rem; width: fit-content; border-radius: 8px; margin-bottom: 20px;'>$probability%</div>";
+        }
+
+        // Display qualifications table
+        echo "<h3>Qualifications Comparison Table</h3>";
+        echo "<table border='1' cellpadding='8' cellspacing='0' width='100%'>";
+        echo "<tr style='background:#efefef'><th>Your Qualifications</th><th>Missing Qualifications</th></tr>";
+        $present = !empty($qualData['present_in_resume']) ? $qualData['present_in_resume'] : [];
+        $missing = !empty($qualData['missing_in_resume']) ? $qualData['missing_in_resume'] : [];
+        $maxRows = max(count($present), count($missing));
+        for($i = 0; $i < $maxRows; $i++) {
+            echo "<tr>";
+            echo "<td>" . ($present[$i] ?? '') . "</td>";
+            echo "<td>" . ($missing[$i] ?? '') . "</td>";
+            echo "</tr>";
+        }
+        echo "</table>";
+
+        // Suggestions
+        echo "<h3>Suggestions to Improve Your CV</h3>";
+        echo "<div>" . nl2br(htmlspecialchars($suggestionOut)) . "</div>";
+
+        // Buttons for next actions and PDF export
         ?>
         <form action="upload.php" method="POST">
             <input type="hidden" name="resumeText" value="<?php echo htmlspecialchars($resumeText, ENT_QUOTES); ?>">
@@ -115,37 +190,44 @@ $jd";
             <button type="submit" name="cover" value="1">Generate Cover Letter</button>
         </form>
         <form action="export.php" method="POST">
-            <input type="hidden" name="content" value="<?php echo htmlspecialchars($aiFeedback, ENT_QUOTES); ?>">
+            <input type="hidden" name="content" value="<?php
+                $exportText = "Owner Details:\nName: " . ($ownerDetails['name'] ?? 'N/A') . "\nEmail: " . ($ownerDetails['email'] ?? 'N/A') . "\nPhone: " . ($ownerDetails['phone'] ?? 'N/A') . "\nSummary: " . ($ownerDetails['summary'] ?? 'N/A') . "\n\n";
+                $exportText .= "Interview Probability: " . ($probability !== null ? $probability . '%' : 'N/A') . "\n\n";
+                $exportText .= "Present in Resume:\n" . implode("\n", $present) . "\n\n";
+                $exportText .= "Missing from Resume:\n" . implode("\n", $missing) . "\n\n";
+                $exportText .= "Suggestions:\n" . $suggestionOut;
+                echo htmlspecialchars($exportText, ENT_QUOTES);
+            ?>">
             <button type="submit" name="format" value="pdf">Download Feedback as PDF</button>
         </form>
         <?php
         exit;
     }
 
-    // Mock Interview Handler
+    // Mock interview questions
     if ($tool === 'mock' && $resumeText && $jd) {
-        $prompt = "Based on the candidate's resume and job description, generate 7 realistic interview questions that target the most relevant skills, gaps, and job requirements for this application.";
-        $output = callGeminiAPI($prompt."\nResume:\n$resumeText\nJob Description:\n$jd", $geminiApiKey);
-        echo "<h2>Mock Interview Questions</h2>
-        <pre style='background:#f8f8ef; padding:10px; border-radius:6px;'>" .
-        htmlspecialchars($output)
-        . "</pre>";
-        echo '<a href="index.php" style="color:blue;">Back to Analysis</a>';
+        $prompt = "Generate 7 realistic interview questions based on this resume and job description.";
+        $output = callGeminiAPI($prompt . "\nResume:\n$resumeText\nJob Description:\n$jd", $geminiApiKey);
+        echo "<h2>Mock Interview Questions</h2><pre>" . htmlspecialchars($output) . "</pre>";
+        echo '<a href="index.php">Back to Analysis</a>';
         exit;
     }
-    // Cover Letter Handler
+
+    // Cover letter generation
     if ($tool === 'cover' && $resumeText && $jd) {
-        $prompt = "Using the following resume and job description, draft a professional, tailored cover letter for this role.";
-        $output = callGeminiAPI($prompt."\nResume:\n$resumeText\nJob Description:\n$jd", $geminiApiKey);
-        echo "<h2>Generated Cover Letter</h2>
-        <pre style='background:#f0f6ff; padding:10px; border-radius:6px;'>" .
-        htmlspecialchars($output)
-        . "</pre>";
-        echo '<a href="index.php" style="color:blue;">Back to Analysis</a>';
+        $prompt = "Generate a professional, tailored cover letter using this resume and job description.";
+        $output = callGeminiAPI($prompt . "\nResume:\n$resumeText\nJob Description:\n$jd", $geminiApiKey);
+        echo "<h2>Cover Letter</h2><pre>" . htmlspecialchars($output) . "</pre>";
+        echo '<a href="index.php">Back to Analysis</a>';
         exit;
     }
 } else {
-    header('Location: index.php');
-    exit;
+    // Display upload form if GET or no POST data
+    echo '<form method="POST" enctype="multipart/form-data">
+        <h2>Upload Resume & Analyze</h2>
+        <label>Upload Resume (PDF/DOCX/TXT): <input type="file" name="resume" required></label><br><br>
+        <label>Paste Job Description:<br><textarea name="job_description" rows="8" cols="70" required></textarea></label><br><br>
+        <button type="submit" name="analyze" value="1">Analyze</button>
+    </form>';
 }
 ?>
