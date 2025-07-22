@@ -1,56 +1,52 @@
-# AI Resume Reviewer
-
-An AI-powered resume analysis tool designed to help job seekers optimize their resumes against specific job descriptions. Built with PHP and integrated with Google's Gemini API, this project offers:
-
-- Extraction of resume owner's details from uploaded PDFs, DOCX, or TXT files.
-- Intelligent matching between resume content and job description qualifications.
-- Clear display of qualifications present in the resume and those missing.
-- A visible interview probability score.
-- Practical suggestions to improve resume alignment.
-- Additional features including AI-driven mock interview question generation, personalized cover letter drafting, and downloadable PDF feedback reports.
-
-## Features
-
-- Upload resumes in popular formats (PDF, DOCX, TXT).
-- Paste job descriptions to tailor analysis.
-- Detailed side-by-side qualification match and gap tables.
-- Extract and display basic owner contact details.
-- Interactive mock interview and cover letter generation.
-- Download feedback as PDF for easy sharing and review.
-- Minimalist, user-friendly design planned for upcoming UI/UX enhancements.
-
-## Technology Stack
-
-- PHP 8+
-- [Google Gemini API](https://ai.google.dev/gemini-api)
-- `smalot/pdfparser` for PDFs
-- `phpoffice/phpword` for DOCX parsing
-- `mpdf/mpdf` for PDF generation
-
-## Usage
-
-1. Clone the repository.
-2. Run `composer install` to install dependencies.
-3. Add your Gemini API key in `upload.php`.
-4. Use a local PHP server or LAMP/WAMP/XAMPP stack to serve the project.
-5. Access `index.php` to upload resumes and job descriptions, then view detailed AI feedback.
-
-## Roadmap
-
-- **Stage 1:** Core functionality with analytical backend and basic UI.
-- **Stage 2:** Sophisticated black & white minimalist UI/UX to enhance user experience without distractions.
-- Future plans include interactive feedback visualization, user accounts, and extended export/share options.
-
-## Notes
-
-- Feedback downloads are provided only as PDFs in line with project preferences.
-- No email notifications or sharing from the system to maintain user privacy and simplicity.
-- Tailored primarily for software engineering roles focusing on skills like Java, REST, SQL, Agile/Scrum, PHP, MySQL, and Full Stack development.
-
-## License
-
-MIT License — feel free to use, modify, and contribute!
-
----
-
-© 2025 AI Resume Reviewer Project  
+AI Resume Reviewer — Smart Career Assistant
+Last updated: July 22, 2025
+🚀 Project Overview
+AI Resume Reviewer is a modern, AI-powered web application designed to help job seekers optimize their resumes for specific job descriptions. Leveraging the cutting-edge Google Gemini AI, the tool analyzes resumes to:
+	•	Extract key personal and professional details.
+	•	Compare qualifications from the resume with those required by a job description.
+	•	Show a clear, side-by-side table of matched and missing qualifications.
+	•	Estimate the likelihood of getting an interview with a prominent score.
+	•	Provide actionable suggestions to enhance the resume for maximum impact.
+	•	Generate tailored mock interview questions to practice.
+	•	Draft personalized cover letters.
+	•	Allow downloading of detailed feedback as PDF reports.
+🧩 Features
+	•	Upload PDF, DOCX, or TXT resumes.
+	•	Paste any job description for targeted analysis.
+	•	Intuitive display of owner details (name, email, phone, summary).
+	•	Clear tables showing qualifications present and missing.
+	•	Prominent interview probability score for real-world readiness.
+	•	AI-generated suggestions to improve resume-job fit.
+	•	Mock Interview module for question practice.
+	•	Cover Letter generator for personalized applications.
+	•	PDF download capability for sharing feedback.
+🎯 Why Use This?
+Standing out in today’s job market requires more than just a good resume — it demands strategic tailoring and smart preparation. This project empowers you to:
+	•	Understand gaps between your resume and desired jobs.
+	•	Target missing skills or keywords instantly.
+	•	Develop confidence via simulated interviews.
+	•	Save time creating effective cover letters.
+	•	Share professional PDF feedback with recruiters or mentors.
+⚙️ Tech Stack
+	•	Backend: PHP 8+
+	•	AI Integration: Google Gemini API (Generative Language API)
+	•	Resume Parsing: `phpoffice/phpword`, `smalot/pdfparser`
+	•	PDF Generation: `mpdf/mpdf`
+	•	Version Control: Git & GitHub
+	•	UI/UX: Minimalist and functional (designed for future responsive upgrades)
+⏳ Roadmap
+	•	Phase 1 (Current): Full AI-powered resume analysis with detailed feedback and export.
+	•	Phase 2: Sophisticated, minimalist black & white UI/UX redesign for enhanced user experience and accessibility.
+	•	Phase 3 & Beyond: User accounts, history tracking, multi-language support, integration with job boards, and mobile app companion.
+💡 How to Use
+	1.	Clone the repository.
+	2.	Run `composer install` to pull dependencies.
+	3.	Add your Google Gemini API key to `upload.php`.
+	4.	Launch on a local or web server.
+	5.	Upload your resume and paste the job description.
+	6.	Review the AI-powered analysis and take next steps with mock interviews & cover letters.
+🤝 Contribution
+Contributions and suggestions are welcome! Feel free to fork, raise issues, or submit pull requests, especially for UI/UX improvements and AI prompt tuning.
+📜 License
+MIT License — free to use, customize, and share.
+Ready to advance your career with AI? Start tailoring smarter, practicing better, and applying with confidence today!
